@@ -250,4 +250,15 @@ export class WaveformRenderer {
     clampOffset() {
         this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
     }
+
+    /**
+     * Clear waveform canvas
+     */
+    clear() {
+        this.ctx.fillStyle = '#1a1a1a';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.zoom = WaveformRenderer.MIN_ZOOM;
+        this.offset = 0;
+        this.amplitude = 1.0;
+    }
 }

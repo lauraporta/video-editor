@@ -156,4 +156,21 @@ export class AudioManager {
     on(event, callback) {
         this.audio.addEventListener(event, callback);
     }
+
+    /**
+     * Clear audio and reset state
+     */
+    clear() {
+        this.stop();
+        if (this.audio.src) {
+            URL.revokeObjectURL(this.audio.src);
+        }
+        this.audio.src = '';
+        this.audioBuffer = null;
+        if (window.a) {
+            window.a.fft = new Array(4).fill(0);
+            window.a.time = 0;
+        }
+        console.log('Audio cleared');
+    }
 }

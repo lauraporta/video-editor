@@ -273,11 +273,33 @@ class HydraVideoEditor {
     }
 
     /**
+     * Remove media source
+     * @param {number} index - Source index to remove
+     */
+    removeMediaSource(index) {
+        this.mediaManager.removeSource(index);
+        this.renderMediaSources();
+    }
+
+    /**
      * Render media sources
      */
     renderMediaSources() {
         const sources = this.mediaManager.getSources();
         this.uiController.renderMediaSources(sources);
+    }
+
+    /**
+     * Clear audio file
+     */
+    clearAudio() {
+        this.audioManager.clear();
+        this.waveformRenderer.clear();
+        const audioInfo = document.getElementById('audio-info');
+        audioInfo.style.display = 'none';
+        const deleteBtn = document.getElementById('delete-audio-btn');
+        if (deleteBtn) deleteBtn.remove();
+        this.updateTimeDisplay(0, 0);
     }
 
     /**
@@ -411,7 +433,31 @@ class HydraVideoEditor {
      * @param {number} height - Canvas height
      */
     setCanvasSize(width, height) {
-        this.hydraManager.setCanvasSize(width, height);
+        this.hydraManager.setCanvasSize(width, height, () => {
+            // Re-execute appropriate segment after Hydra reinitialization
+            const editingIndex = this.segmentManager.getEditingSegmentIndex();
+            
+            if (editingIndex >= 0) {
+                // If editing a segment, execute that one
+                const segment = this.segmentManager.getSegment(editingIndex);
+                if (segment) {
+                    this.hydraManager.executeCode(segment.code);
+                }
+            } else {
+                // Otherwise, try segment at current playback time
+                const currentIndex = this.segmentManager.getCurrentSegmentIndex();
+                if (currentIndex >= 0) {
+                    this.segmentManager.executeSegment(currentIndex);
+                } else if (this.segmentManager.getSegments().length > 0) {
+                    // If no segment at current time, execute the first segment
+                    const firstSegment = this.segmentManager.getSegments()[0];
+                    this.hydraManager.executeCode(firstSegment.code);
+                } else {
+                    // No segments at all, show default
+                    this.segmentManager.executeDefaultVisual();
+                }
+            }
+        });
         const resolutionDisplay = document.getElementById('current-resolution');
         if (resolutionDisplay) {
             resolutionDisplay.textContent = `Current: ${width}×${height}`;
@@ -476,6 +522,9 @@ class HydraVideoEditor {
                     }
                 }
             }
+            
+            // Clear existing media sources to prevent duplication
+            this.mediaManager.clear();
             
             // Try to restore media files
             let mediaRestored = [];

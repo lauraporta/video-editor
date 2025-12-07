@@ -27,7 +27,7 @@ export class HydraManager {
         // Load default visual after initialization
         setTimeout(() => {
             try {
-                osc(10, 0.1, 1).out();
+                solid().out();
                 console.log('Default visual loaded');
             } catch (error) {
                 console.error('Error loading default visual:', error);
@@ -46,21 +46,28 @@ export class HydraManager {
     }
 
     /**
-     * Set canvas size and reinitialize Hydra
+     * Set canvas size
      * @param {number} width - Canvas width
      * @param {number} height - Canvas height
+     * @param {Function} callback - Callback after canvas is resized
      */
-    setCanvasSize(width, height) {
+    setCanvasSize(width, height, callback) {
         const canvas = document.getElementById('hydra-canvas');
+        
+        // Set canvas resolution
         canvas.width = width;
         canvas.height = height;
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.objectFit = 'contain';
         
-        // Reinitialize Hydra with new canvas size
-        this.init();
+        // Update Hydra's internal resolution if Hydra is already initialized
+        if (this.hydra && this.hydra.setResolution) {
+            this.hydra.setResolution(width, height);
+        }
         
         console.log(`Canvas size set to ${width}×${height}`);
+        
+        // Call callback immediately since no reinitialization needed
+        if (callback) {
+            setTimeout(callback, 50);
+        }
     }
 }

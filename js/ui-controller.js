@@ -133,7 +133,7 @@ export class UIController {
             
             if (isResizingHorizontal) {
                 const container = document.getElementById('app-container');
-                const newBottomHeight = Math.max(150, Math.min(window.innerHeight - e.clientY, window.innerHeight - 200));
+                const newBottomHeight = Math.max(400, Math.min(window.innerHeight - e.clientY, window.innerHeight - 200));
                 container.style.gridTemplateRows = `1fr ${newBottomHeight}px`;
                 horizontalHandle.style.top = `${window.innerHeight - newBottomHeight}px`;
                 localStorage.setItem('bottomPanelHeight', newBottomHeight);
@@ -658,6 +658,19 @@ export class UIController {
             filename.style.marginTop = '5px';
             div.appendChild(filename);
             
+            // Add delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'source-delete-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.title = 'Delete source';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete source s${source.index}?`)) {
+                    this.app.removeMediaSource(source.index);
+                }
+            });
+            div.appendChild(deleteBtn);
+            
             container.appendChild(div);
         });
     }
@@ -770,6 +783,21 @@ ${segment.code}`;
             const minutes = Math.floor(duration / 60);
             const seconds = Math.floor(duration % 60);
             audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Add delete button if it doesn't exist
+            if (!document.getElementById('delete-audio-btn')) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.id = 'delete-audio-btn';
+                deleteBtn.className = 'audio-delete-btn';
+                deleteBtn.textContent = 'Delete Audio';
+                deleteBtn.style.marginTop = '10px';
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm('Delete the loaded audio file?')) {
+                        this.app.clearAudio();
+                    }
+                });
+                audioInfo.appendChild(deleteBtn);
+            }
         }
     }
 

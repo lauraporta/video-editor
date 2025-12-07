@@ -58,9 +58,27 @@ export class MediaManager {
     }
 
     /**
+     * Remove a specific source
+     * @param {number} index - Index of source to remove
+     */
+    removeSource(index) {
+        const sourceIndex = this.sources.findIndex(s => s.index === index);
+        if (sourceIndex !== -1) {
+            // Revoke object URL to free memory
+            URL.revokeObjectURL(this.sources[sourceIndex].url);
+            this.sources.splice(sourceIndex, 1);
+            console.log(`Removed source s${index}`);
+        }
+    }
+
+    /**
      * Clear all sources
      */
     clear() {
+        // Revoke all object URLs to free memory
+        this.sources.forEach(source => {
+            URL.revokeObjectURL(source.url);
+        });
         this.sources = [];
     }
 
