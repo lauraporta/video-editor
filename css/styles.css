@@ -894,7 +894,7 @@ textarea:focus {
 @media (max-width: 768px) {
     #app-container {
         grid-template-columns: 1fr;
-        grid-template-rows: 200px 1fr 250px;
+        grid-template-rows: auto 1fr 300px;
         grid-template-areas:
             "left"
             "right"
@@ -904,14 +904,115 @@ textarea:focus {
     #left-panel {
         border-right: none;
         border-bottom: 2px solid #333;
+        max-height: 40vh;
+        overflow-y: auto;
     }
     
-    button {
-        padding: 8px 15px;
+    /* Make accordions more compact on mobile */
+    .accordion-header {
+        padding: 12px 15px;
         font-size: 12px;
     }
     
+    .accordion-content {
+        padding: 12px !important;
+    }
+    
+    /* Ensure Code Segments section doesn't expand too much on mobile */
+    .accordion-item:nth-child(2) #segment-code {
+        min-height: 150px;
+        max-height: 200px;
+    }
+    
+    /* Make buttons more touch-friendly */
+    button {
+        padding: 10px 16px;
+        font-size: 13px;
+        min-height: 40px;
+    }
+    
+    label.file-label {
+        padding: 10px 16px;
+        font-size: 13px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Sources grid - horizontal scroll on mobile */
     .sources-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 10px;
+    }
+    
+    .source-item {
+        flex-shrink: 0;
+        width: 120px;
+    }
+    
+    .source-item img,
+    .source-item video {
+        width: 120px;
+        height: 120px;
+    }
+    
+    /* Waveform controls - wrap on mobile */
+    .waveform-controls {
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 10px;
+    }
+    
+    .waveform-controls button {
+        flex: 1;
+        min-width: 80px;
+    }
+    
+    /* Timeline segments - make more touch-friendly */
+    .segment-item {
+        min-height: 50px;
+        padding: 8px;
+    }
+    
+    /* Playback controls - better spacing */
+    #playback-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    #playback-controls button {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    /* Time inputs - better mobile layout */
+    .time-inputs-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .time-input-group {
+        width: 100%;
+    }
+    
+    .time-input-group input {
+        width: 100%;
+    }
+    
+    /* Canvas presets - stack vertically on mobile */
+    .canvas-presets {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .preset-btn {
+        width: 100%;
     }
 }
