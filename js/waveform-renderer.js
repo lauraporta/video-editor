@@ -41,6 +41,9 @@ export class WaveformRenderer {
         this.ctx.fillStyle = '#1a1a1a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Draw timeline ticks and labels
+        this.drawTimeline();
+
         // Draw waveform
         this.ctx.beginPath();
         this.ctx.strokeStyle = '#fff';
@@ -69,6 +72,51 @@ export class WaveformRenderer {
     }
 
     /**
+     * Draw timeline with second markers and ticks
+     */
+    drawTimeline() {
+        const duration = this.audioManager.getDuration();
+        if (!duration) return;
+
+        const visibleStart = this.offset * duration;
+        const visibleEnd = visibleStart + (duration / this.zoom);
+        const visibleDuration = visibleEnd - visibleStart;
+
+        // Determine tick interval based on zoom level
+        let tickInterval;
+        if (visibleDuration > 60) {
+            tickInterval = 10; // 10 second intervals
+        } else if (visibleDuration > 20) {
+            tickInterval = 5; // 5 second intervals
+        } else if (visibleDuration > 10) {
+            tickInterval = 2; // 2 second intervals
+        } else {
+            tickInterval = 1; // 1 second intervals
+        }
+
+        // Draw ticks
+        const startTick = Math.ceil(visibleStart / tickInterval) * tickInterval;
+        
+        for (let time = startTick; time <= visibleEnd; time += tickInterval) {
+            const x = ((time - visibleStart) / visibleDuration) * this.canvas.width;
+            
+            // Draw tick line
+            this.ctx.strokeStyle = '#555';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+            
+            // Draw time label
+            this.ctx.fillStyle = '#888';
+            this.ctx.font = '10px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${time.toFixed(1)}s`, x, 12);
+        }
+    }
+
+    /**
      * Draw segment markers on waveform
      * @param {Array} segments - Timeline segments
      */
@@ -78,12 +126,13 @@ export class WaveformRenderer {
 
         const visibleStart = this.offset * duration;
         const visibleEnd = visibleStart + (duration / this.zoom);
+        const visibleDuration = visibleEnd - visibleStart;
 
         segments.forEach(segment => {
             if (segment.endTime < visibleStart || segment.startTime > visibleEnd) return;
             
-            const startX = ((segment.startTime - visibleStart) / (visibleEnd - visibleStart)) * this.canvas.width;
-            const endX = ((segment.endTime - visibleStart) / (visibleEnd - visibleStart)) * this.canvas.width;
+            const startX = ((segment.startTime - visibleStart) / visibleDuration) * this.canvas.width;
+            const endX = ((segment.endTime - visibleStart) / visibleDuration) * this.canvas.width;
 
             // Draw segment region
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
@@ -110,14 +159,15 @@ export class WaveformRenderer {
      * Zoom in
      */
     zoomIn() {
-        this.zoom = Math.min(this.zoom * 1.5, 20);
+        this.zoom = Math.min(this.zoom * 1.2, 20);
+        this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
     }
 
     /**
      * Zoom out
      */
     zoomOut() {
-        this.zoom = Math.max(this.zoom / 1.5, 1);
+        this.zoom = Math.max(this.zoom / 1.2, 1);
         this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
     }
 
@@ -146,18 +196,23 @@ export class WaveformRenderer {
      * @param {WheelEvent} e - Wheel event
      */
     handleWheel(e) {
-        if (e.ctrlKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-            // Zoom
-            const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+        if (e.shiftKey) {
+            // Amplitude zoom with Shift
+            const ampDelta = e.deltaY > 0 ? 0.95 : 1.05;
+            this.amplitude = Math.max(0.1, Math.min(this.amplitude * ampDelta, 5));
+        } else if (e.ctrlKey || e.metaKey) {
+            // Time zoom with Ctrl/Cmd (slower for trackpad)
+            const zoomDelta = e.deltaY > 0 ? 0.97 : 1.03;
             this.zoom = Math.max(1, Math.min(this.zoom * zoomDelta, 20));
             this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
-        } else if (e.shiftKey) {
-            // Amplitude
-            const ampDelta = e.deltaY > 0 ? 0.9 : 1.1;
-            this.amplitude = Math.max(0.1, Math.min(this.amplitude * ampDelta, 5));
+        } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            // Vertical scroll = time zoom (slower for trackpad)
+            const zoomDelta = e.deltaY > 0 ? 0.97 : 1.03;
+            this.zoom = Math.max(1, Math.min(this.zoom * zoomDelta, 20));
+            this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
         } else {
-            // Pan horizontally
-            const panAmount = e.deltaX / this.canvas.offsetWidth;
+            // Horizontal scroll = pan
+            const panAmount = e.deltaX / (this.canvas.offsetWidth * 2);
             this.offset += panAmount / this.zoom;
             this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
         }

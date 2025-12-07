@@ -35,6 +35,13 @@ class HydraVideoEditor {
         // Setup audio event listeners
         this.setupAudioListeners();
         
+        // Set default visual
+        setTimeout(() => {
+            if (this.segmentManager.getSegments().length === 0) {
+                this.segmentManager.executeDefaultVisual();
+            }
+        }, 200);
+        
         console.log('Hydra Video Editor initialized');
         console.log('Available sources: s0-s7 for custom media');
         console.log('Use arrays with .smooth() for transitions');
@@ -57,11 +64,19 @@ class HydraVideoEditor {
     /**
      * Load audio file
      * @param {File} file - Audio file
+     * @param {FileSystemFileHandle} fileHandle - Optional file handle
      */
-    async loadAudioFile(file) {
+    async loadAudioFile(file, fileHandle = null) {
         try {
             const filename = await this.audioManager.loadFile(file);
-            this.projectManager.setAudioPath(filename);
+            const audioPath = file.path || file.webkitRelativePath || filename;
+            this.projectManager.setAudioPath(audioPath);
+            
+            // Store file handle if provided
+            if (fileHandle) {
+                this.projectManager.setAudioFileHandle(fileHandle);
+            }
+            
             this.waveformRenderer.draw(this.segmentManager.getSegments());
             
             // Update audio info in UI
@@ -70,6 +85,18 @@ class HydraVideoEditor {
         } catch (error) {
             console.error('Error loading audio:', error);
             alert('Error loading audio file');
+        }
+    }
+
+    /**
+     * Load audio file with file picker
+     */
+    async loadAudioWithPicker() {
+        try {
+            const file = await this.projectManager.requestAudioFileAccess();
+            await this.loadAudioFile(file, this.projectManager.audioFileHandle);
+        } catch (error) {
+            // Error already logged in projectManager
         }
     }
 
@@ -128,7 +155,14 @@ class HydraVideoEditor {
         if (!duration) return;
 
         const currentTime = this.audioManager.getCurrentTime();
-        const progress = currentTime / duration;
+        
+        // Calculate playhead position accounting for zoom and offset
+        const zoom = this.waveformRenderer.zoom;
+        const offset = this.waveformRenderer.offset;
+        const visibleStart = offset * duration;
+        const visibleDuration = duration / zoom;
+        
+        const progress = (currentTime - visibleStart) / visibleDuration;
         this.uiController.updatePlayhead(progress);
 
         const current = formatTime(currentTime);
@@ -372,6 +406,19 @@ class HydraVideoEditor {
     }
 
     /**
+     * Set canvas size
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     */
+    setCanvasSize(width, height) {
+        this.hydraManager.setCanvasSize(width, height);
+        const resolutionDisplay = document.getElementById('current-resolution');
+        if (resolutionDisplay) {
+            resolutionDisplay.textContent = `Current: ${width}×${height}`;
+        }
+    }
+
+    /**
      * Load project
      * @param {File} file - Project file
      */
@@ -382,6 +429,7 @@ class HydraVideoEditor {
             // Clear current state
             this.segmentManager.clear();
             this.mediaManager.clear();
+            this.projectManager.clearMediaFileHandles();
             
             // Load project data
             this.segmentManager.import(project.segments);
@@ -394,6 +442,37 @@ class HydraVideoEditor {
                 this.updateZoomDisplay();
             }
             
+            // Attempt to restore files from IndexedDB handles
+            if (project.storedHandles) {
+                // Try to restore audio
+                if (project.storedHandles.audio) {
+                    try {
+                        this.projectManager.audioFileHandle = project.storedHandles.audio;
+                        const audioFile = await this.projectManager.getAudioFile();
+                        await this.loadAudioFile(audioFile, this.projectManager.audioFileHandle);
+                        console.log('✓ Audio file restored');
+                    } catch (error) {
+                        console.log('Could not restore audio file:', error.message);
+                        console.log(`Please reload audio file: ${project.audioName}`);
+                    }
+                }
+                
+                // Try to restore media files
+                if (project.storedHandles.media && project.storedHandles.media.length > 0) {
+                    try {
+                        this.projectManager.mediaFileHandles = project.storedHandles.media;
+                        const mediaFiles = await this.projectManager.getMediaFiles();
+                        for (const mediaFile of mediaFiles) {
+                            const type = mediaFile.type.startsWith('video/') ? 'video' : 'image';
+                            this.addMediaSource(type, mediaFile);
+                        }
+                        console.log(`✓ ${mediaFiles.length} media file(s) restored`);
+                    } catch (error) {
+                        console.log('Could not restore some media files');
+                    }
+                }
+            }
+            
             // Render UI
             this.renderTimeline();
             this.renderMediaSources();
@@ -404,7 +483,6 @@ class HydraVideoEditor {
             
             const segmentCount = this.segmentManager.getSegments().length;
             console.log(`✓ Project loaded: ${segmentCount} segments`);
-            alert(`Project loaded!\n\nSegments: ${segmentCount}\n\nPlease reload:\n- Audio file\n- Media sources (videos/images)`);
             
         } catch (error) {
             console.error('Error loading project:', error);

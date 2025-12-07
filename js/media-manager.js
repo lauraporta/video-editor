@@ -18,9 +18,13 @@ export class MediaManager {
         const url = URL.createObjectURL(file);
         const index = this.sources.length;
         
+        // Store file path if available (for desktop), otherwise store name
+        const filePath = file.path || file.webkitRelativePath || file.name;
+        
         this.sources.push({
             type,
             file: file.name,
+            path: filePath,
             url,
             index
         });
@@ -68,6 +72,7 @@ export class MediaManager {
         return this.sources.map(source => ({
             type: source.type,
             file: source.file,
+            path: source.path,
             index: source.index
         }));
     }

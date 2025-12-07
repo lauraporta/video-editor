@@ -44,4 +44,23 @@ export class HydraManager {
         const executeCode = new Function(code);
         executeCode();
     }
+
+    /**
+     * Set canvas size and reinitialize Hydra
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     */
+    setCanvasSize(width, height) {
+        const canvas = document.getElementById('hydra-canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.objectFit = 'contain';
+        
+        // Reinitialize Hydra with new canvas size
+        this.init();
+        
+        console.log(`Canvas size set to ${width}×${height}`);
+    }
 }

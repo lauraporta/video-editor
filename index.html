@@ -17,23 +17,31 @@
     <!-- Main Layout Container -->
     <div id="app-container">
         
-        <!-- Left Panel: Tabbed Interface -->
+        <!-- Left Panel: Accordion Interface -->
         <div id="left-panel">
-            <!-- Tab Navigation -->
-            <div id="tab-nav">
-                <button class="tab-button active" data-tab="code">Code / Segments</button>
-                <button class="tab-button" data-tab="sources">Sources</button>
-                <button class="tab-button" data-tab="project">Save / Load</button>
-                <button class="tab-button" data-tab="audio">Audio</button>
+            
+            <!-- Save/Load Accordion -->
+            <div class="accordion-item">
+                <button class="accordion-header">
+                    <span>Save / Load</span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <div class="project-buttons">
+                        <button id="save-project" class="primary">Save Project</button>
+                        <button id="load-project" class="primary">Load Project</button>
+                        <input type="file" id="project-file" accept=".json">
+                    </div>
+                </div>
             </div>
 
-            <!-- Tab Content Container -->
-            <div id="tab-content">
-                
-                <!-- Code/Segments Tab -->
-                <div id="code-tab" class="tab-panel active">
-                    <h3>Segment Editor <span id="edit-mode-indicator"></span></h3>
-                    
+            <!-- Code Segments Accordion -->
+            <div class="accordion-item active">
+                <button class="accordion-header">
+                    <span>Code Segments <span id="edit-mode-indicator"></span></span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content" style="display: block;">
                     <!-- Error Display Section -->
                     <div id="error-section" style="display: none;">
                         <div class="error-banner">⚠️ Hydra Execution Error</div>
@@ -41,27 +49,32 @@
                         <button id="clear-error">Clear Error</button>
                     </div>
                     
-                    <div class="input-group">
-                        <label>Start (sec):</label>
-                        <input type="number" id="segment-start" value="0" min="0" step="0.1">
-                    </div>
-                    <div class="input-group">
-                        <label>End (sec):</label>
-                        <input type="number" id="segment-end" value="6" min="0" step="0.1">
+                    <div class="time-inputs-row">
+                        <div class="time-input-group">
+                            <label>Start:</label>
+                            <input type="number" id="segment-start" value="0" min="0" step="0.1">
+                        </div>
+                        <div class="time-input-group">
+                            <label>End:</label>
+                            <input type="number" id="segment-end" value="6" min="0" step="0.1">
+                        </div>
                     </div>
                     <textarea id="segment-code" placeholder="Enter Hydra code... e.g., osc(10, 0.1, 1).out(o0)"></textarea>
                     <div class="button-group">
                         <button id="add-segment">Add Segment</button>
                         <button id="cancel-edit" style="display: none;">Cancel Edit</button>
-                        <button id="sort-segments">Sort Segments</button>
                     </div>
-                    <div class="info">Live coding mode: each segment builds on previous output (o0)</div>
-                    <div id="segments-list"></div>
+                    <div class="info">Click timeline segments to edit</div>
                 </div>
+            </div>
 
-                <!-- Sources Tab -->
-                <div id="sources-tab" class="tab-panel">
-                    <h3>Media Sources (s0-s7)</h3>
+            <!-- Sources Accordion -->
+            <div class="accordion-item">
+                <button class="accordion-header">
+                    <span>Sources</span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
                     <label for="video-file" class="file-label">Add Video</label>
                     <input type="file" id="video-file" accept="video/*" multiple>
                     <label for="image-file" class="file-label">Add Image</label>
@@ -69,26 +82,43 @@
                     <div class="sources-grid" id="sources-list"></div>
                     <div class="info">Use src(s0), src(s1), etc. in your Hydra code</div>
                 </div>
+            </div>
 
-                <!-- Project Tab -->
-                <div id="project-tab" class="tab-panel">
-                    <h3>Project</h3>
-                    <div class="project-buttons">
-                        <button id="save-project" class="primary">Save Project</button>
-                        <button id="load-project" class="primary">Load Project</button>
-                        <input type="file" id="project-file" accept=".json">
+            <!-- Canvas Size Accordion -->
+            <div class="accordion-item">
+                <button class="accordion-header">
+                    <span>Canvas Size</span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <div class="canvas-presets">
+                        <button class="preset-btn active" data-width="1920" data-height="1080">Desktop (1920×1080)</button>
+                        <button class="preset-btn" data-width="1080" data-height="1920">Mobile (1080×1920)</button>
+                        <button class="preset-btn" data-width="1080" data-height="1080">Square (1080×1080)</button>
+                        <button class="preset-btn" data-width="custom" data-height="custom">Custom</button>
                     </div>
-                    <div class="info">Save/load your work including audio, media, and segments</div>
-                    <div class="hydra-info">
-                        <strong>Hydra Config:</strong><br>
-                        8 sources (s0-s7)<br>
-                        4 outputs (o0-o3)
+                    <div id="custom-size" style="display: none;">
+                        <div class="input-group">
+                            <label>Width:</label>
+                            <input type="number" id="canvas-width" value="1920" min="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Height:</label>
+                            <input type="number" id="canvas-height" value="1080" min="1">
+                        </div>
+                        <button id="apply-custom-size">Apply</button>
                     </div>
+                    <div class="info" id="current-resolution">Current: 1920×1080</div>
                 </div>
+            </div>
 
-                <!-- Audio Tab -->
-                <div id="audio-tab" class="tab-panel">
-                    <h3>Audio</h3>
+            <!-- Audio Accordion -->
+            <div class="accordion-item">
+                <button class="accordion-header">
+                    <span>Audio</span>
+                    <span class="accordion-icon">▼</span>
+                </button>
+                <div class="accordion-content">
                     <label for="audio-file" class="file-label">Load Audio File</label>
                     <input type="file" id="audio-file" accept="audio/*">
                     <div id="audio-info" style="display: none;">
@@ -99,8 +129,8 @@
                     </div>
                     <div class="info">Audio reactive: use a.fft[0-3] in your Hydra code</div>
                 </div>
-
             </div>
+
         </div>
 
         <!-- Right Panel: Hydra Canvas -->
@@ -115,10 +145,21 @@
             <div class="panel-header">
                 <h3>Timeline</h3>
                 <div id="playback-controls">
-                    <button id="play-pause">Play</button>
-                    <button id="stop">Stop</button>
+                    <button id="play-pause">
+                        <svg id="play-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <svg id="pause-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                        </svg>
+                    </button>
+                    <button id="stop">⏹</button>
                     <span id="time-display">0:00 / 0:00</span>
                 </div>
+            </div>
+            
+            <div class="timeline-scrubber">
+                <input type="range" id="timeline-scroll" min="0" max="100" value="0" step="0.1">
             </div>
             
             <div id="waveform-container">
@@ -131,9 +172,8 @@
                 <button id="zoom-in">Zoom In</button>
                 <button id="zoom-out">Zoom Out</button>
                 <button id="reset-view">Reset View</button>
-                <span id="zoom-level">Zoom: 1.0x | Amp: 1.0x</span>
+                <span id="zoom-level"></span>
             </div>
-            <div class="info">Click to seek | Drag to pan | Pinch to zoom</div>
         </div>
 
     </div>

@@ -83,11 +83,27 @@ export class SegmentManager {
         if (activeIndex !== this.currentSegmentIndex) {
             if (activeIndex >= 0) {
                 this.executeSegment(activeIndex);
+            } else if (this.segments.length === 0) {
+                // Only show default black if NO segments exist at all
+                this.executeDefaultVisual();
             }
+            // If segments exist but none active, keep previous visual
             this.currentSegmentIndex = activeIndex;
             return true;
         }
         return false;
+    }
+
+    /**
+     * Execute default visual when no segments exist
+     */
+    executeDefaultVisual() {
+        try {
+            this.hydraManager.executeCode('solid().out()');
+            console.log('Default black visual active (no segments)');
+        } catch (error) {
+            console.error('Error executing default visual:', error);
+        }
     }
 
     /**
