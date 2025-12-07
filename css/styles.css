@@ -11,15 +11,101 @@ body {
     font-family: 'Monaco', 'Courier New', monospace;
     background: #0a0a0a;
     color: #f0f0f0;
-    display: flex;
-    flex-direction: column;
     height: 100vh;
     overflow: hidden;
 }
 
-/* ==================== Hydra Canvas Container ==================== */
-#hydra-container {
+/* ==================== Main App Container (Grid Layout) ==================== */
+#app-container {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    grid-template-rows: 1fr 280px;
+    grid-template-areas:
+        "left right"
+        "bottom bottom";
+    height: 100vh;
+    gap: 2px;
+    background: #000;
+}
+
+/* ==================== Left Panel (Tabbed) ==================== */
+#left-panel {
+    grid-area: left;
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 2px solid #333;
+}
+
+#tab-nav {
+    display: flex;
+    flex-direction: column;
+    background: #0a0a0a;
+    border-bottom: 2px solid #333;
+}
+
+.tab-button {
+    background: #222;
+    color: #888;
+    border: none;
+    border-bottom: 1px solid #333;
+    padding: 12px 15px;
+    margin: 0;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+    background: #2a2a2a;
+    color: #aaa;
+}
+
+.tab-button.active {
+    background: #1a1a1a;
+    color: #fff;
+    border-left: 3px solid #fff;
+    font-weight: bold;
+}
+
+#tab-content {
     flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+.tab-panel h3 {
+    margin-bottom: 15px;
+    color: #fff;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ==================== Right Panel (Hydra Canvas) ==================== */
+#right-panel {
+    grid-area: right;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+}
+
+#hydra-container {
+    width: 100%;
+    height: 100%;
     position: relative;
     background: #000;
 }
@@ -29,29 +115,31 @@ body {
     height: 100%;
 }
 
-/* ==================== Controls Panel ==================== */
-#controls {
+/* ==================== Bottom Panel (Timeline/Waveform) ==================== */
+#bottom-panel {
+    grid-area: bottom;
     background: #1a1a1a;
-    padding: 20px;
     border-top: 2px solid #333;
-    max-height: 60vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.control-section {
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #222;
-    border-radius: 5px;
-    border: 1px solid #444;
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: #0a0a0a;
+    border-bottom: 1px solid #333;
 }
 
-.control-section h3 {
-    margin-bottom: 10px;
+.panel-header h3 {
     color: #fff;
-    font-size: 14px;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    margin: 0;
 }
 
 /* ==================== Buttons ==================== */
@@ -119,15 +207,12 @@ label.file-label:hover {
 /* ==================== Waveform Display ==================== */
 #waveform-container {
     position: relative;
-    width: 100%;
-    height: 200px;
+    flex: 1;
     background: #0a0a0a;
-    margin: 10px 0;
-    border-radius: 3px;
     overflow: hidden;
-    border: 1px solid #333;
     cursor: grab;
     touch-action: none;
+    min-height: 150px;
 }
 
 #waveform-container:active {
@@ -154,10 +239,12 @@ label.file-label:hover {
 .waveform-controls {
     display: flex;
     gap: 10px;
-    margin-top: 5px;
+    padding: 8px 15px;
     font-size: 12px;
     color: #888;
     align-items: center;
+    background: #0a0a0a;
+    border-top: 1px solid #333;
 }
 
 .waveform-controls button {
@@ -170,56 +257,108 @@ label.file-label:hover {
     font-family: monospace;
 }
 
-/* ==================== Timeline ==================== */
+/* ==================== Timeline (Overlaid on Waveform) ==================== */
 #timeline {
-    margin-top: 15px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
 }
 
 .segment {
+    position: absolute;
+    background: rgba(100, 150, 255, 0.3);
+    border: 2px solid rgba(100, 150, 255, 0.8);
+    border-radius: 3px;
+    height: 100%;
+    transition: all 0.2s ease;
+    pointer-events: all;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.segment.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.segment.editing {
+    background: rgba(200, 200, 200, 0.3);
+    border-color: #aaa;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.segment:hover {
+    background: rgba(120, 170, 255, 0.4);
+    border-color: rgba(120, 170, 255, 1);
+}
+
+.segment-label {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    font-size: 10px;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.segment-time {
+    font-size: 10px;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Segments list in left panel */
+#segments-list {
+    margin-top: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.segment-item {
     background: #2a2a2a;
     border: 2px solid #555;
     border-radius: 3px;
     padding: 10px;
-    margin: 10px 0;
-    position: relative;
+    margin: 8px 0;
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.segment.active {
+.segment-item.active {
     border-color: #fff;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-.segment.editing {
+.segment-item.editing {
     border-color: #aaa;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
     background: #333;
 }
 
-.segment:hover {
-    cursor: pointer;
+.segment-item:hover {
     opacity: 0.9;
     transform: translateX(2px);
 }
 
-.segment-header {
+.segment-item-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
 }
 
-.segment-time {
-    font-size: 12px;
-    color: #fff;
-    font-weight: bold;
-}
-
 .segment-delete {
     background: #f44336;
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: 11px;
     border-color: #d32f2f;
+    margin: 0;
 }
 
 .segment-delete:hover {
@@ -358,27 +497,20 @@ textarea:focus {
     font-weight: bold;
 }
 
-/* ==================== Splitter ==================== */
-#splitter {
-    height: 5px;
-    background: #333;
-    cursor: ns-resize;
-    position: relative;
-    transition: background 0.2s ease;
-}
-
-#splitter:hover {
-    background: #666;
-}
-
 /* ==================== Error Display ==================== */
 #error-section {
     background: #4a0000;
     border: 2px solid #ff0000;
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 15px;
 }
 
-#error-section h3 {
+.error-banner {
     color: #ff4444;
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 8px;
 }
 
 #error-display {
@@ -387,16 +519,17 @@ textarea:focus {
     padding: 15px;
     border-radius: 3px;
     font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 11px;
     white-space: pre-wrap;
     word-break: break-all;
     margin: 10px 0;
-    max-height: 200px;
+    max-height: 150px;
     overflow-y: auto;
 }
 
 #clear-error {
     background: #666;
+    margin: 5px 0;
 }
 
 #clear-error:hover {
@@ -447,10 +580,89 @@ textarea:focus {
     background: #555;
 }
 
+/* ==================== Additional Styles ==================== */
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.button-group button {
+    flex: 1;
+    min-width: 100px;
+}
+
+.info-box {
+    background: #0a0a0a;
+    padding: 10px;
+    border-radius: 3px;
+    border: 1px solid #333;
+    margin: 10px 0;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.info-box strong {
+    color: #aaa;
+}
+
+#playback-controls button {
+    padding: 8px 15px;
+    margin: 0 5px;
+}
+
 /* ==================== Responsive Design ==================== */
+@media (max-width: 1200px) {
+    #app-container {
+        grid-template-columns: 300px 1fr;
+    }
+}
+
+@media (max-width: 900px) {
+    #app-container {
+        grid-template-columns: 250px 1fr;
+        grid-template-rows: 1fr 250px;
+    }
+    
+    #left-panel {
+        font-size: 12px;
+    }
+    
+    #tab-content {
+        padding: 15px;
+    }
+}
+
 @media (max-width: 768px) {
-    .control-section {
-        padding: 10px;
+    #app-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 200px 1fr 250px;
+        grid-template-areas:
+            "left"
+            "right"
+            "bottom";
+    }
+    
+    #left-panel {
+        border-right: none;
+        border-bottom: 2px solid #333;
+    }
+    
+    #tab-nav {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    
+    .tab-button {
+        white-space: nowrap;
+        border-bottom: none;
+        border-right: 1px solid #333;
+    }
+    
+    .tab-button.active {
+        border-left: none;
+        border-bottom: 3px solid #fff;
     }
     
     button {
@@ -460,9 +672,5 @@ textarea:focus {
     
     .sources-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    }
-    
-    #waveform-container {
-        height: 150px;
     }
 }

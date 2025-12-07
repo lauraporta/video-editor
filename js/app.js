@@ -63,6 +63,10 @@ class HydraVideoEditor {
             const filename = await this.audioManager.loadFile(file);
             this.projectManager.setAudioPath(filename);
             this.waveformRenderer.draw(this.segmentManager.getSegments());
+            
+            // Update audio info in UI
+            const duration = this.audioManager.getDuration();
+            this.uiController.updateAudioInfo(file.name, duration);
         } catch (error) {
             console.error('Error loading audio:', error);
             alert('Error loading audio file');

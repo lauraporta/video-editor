@@ -13,12 +13,34 @@ export class UIController {
      * Initialize all event listeners
      */
     initEventListeners() {
+        this.initTabSwitching();
         this.initAudioControls();
         this.initMediaControls();
         this.initSegmentControls();
         this.initWaveformControls();
         this.initProjectControls();
-        this.initSplitter();
+    }
+
+    /**
+     * Initialize tab switching functionality
+     */
+    initTabSwitching() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                
+                // Remove active class from all buttons and panels
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanels.forEach(panel => panel.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding panel
+                button.classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
     }
 
     /**
@@ -150,38 +172,7 @@ export class UIController {
         });
     }
 
-    /**
-     * Initialize splitter for resizing panels
-     */
-    initSplitter() {
-        const splitter = document.getElementById('splitter');
-        const container = document.getElementById('hydra-container');
-        let isResizing = false;
 
-        splitter.addEventListener('mousedown', () => {
-            isResizing = true;
-            document.body.style.cursor = 'ns-resize';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-
-            const totalHeight = window.innerHeight;
-            const newContainerHeight = e.clientY;
-            const containerPercent = (newContainerHeight / totalHeight) * 100;
-
-            if (containerPercent > 20 && containerPercent < 80) {
-                container.style.flex = `0 0 ${containerPercent}%`;
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = 'default';
-            }
-        });
-    }
 
     /**
      * Update playhead position
@@ -226,8 +217,73 @@ export class UIController {
      * @param {Function} onEdit - Edit callback
      */
     renderTimeline(segments, currentIndex, editingIndex, onDelete, onEdit) {
-        const container = document.getElementById('timeline');
+        // Render segments in left panel list
+        this.renderSegmentsList(segments, currentIndex, editingIndex, onDelete, onEdit);
+        
+        // Render segments overlaid on waveform
+        this.renderSegmentsOnWaveform(segments, currentIndex, editingIndex, onEdit);
+    }
+
+    /**
+     * Render segments list in left panel
+     */
+    renderSegmentsList(segments, currentIndex, editingIndex, onDelete, onEdit) {
+        const container = document.getElementById('segments-list');
         container.innerHTML = '';
+
+        if (segments.length === 0) {
+            container.innerHTML = '<div class="info">No segments yet. Add your first segment above.</div>';
+            return;
+        }
+
+        segments.forEach((segment, index) => {
+            const div = document.createElement('div');
+            div.className = 'segment-item';
+            
+            if (index === currentIndex) {
+                div.classList.add('active');
+            }
+            
+            if (index === editingIndex) {
+                div.classList.add('editing');
+            }
+
+            div.innerHTML = `
+                <div class="segment-item-header">
+                    <span class="segment-time">
+                        ${segment.startTime.toFixed(1)}s - ${segment.endTime.toFixed(1)}s
+                    </span>
+                    <button class="segment-delete" data-index="${index}">Delete</button>
+                </div>
+                <textarea readonly style="min-height: 60px; font-size: 11px;">${segment.code}</textarea>
+            `;
+
+            div.querySelector('.segment-delete').addEventListener('click', (e) => {
+                e.stopPropagation();
+                onDelete(index);
+            });
+
+            div.addEventListener('click', () => {
+                onEdit(index);
+            });
+
+            container.appendChild(div);
+        });
+    }
+
+    /**
+     * Render segments overlaid on waveform
+     */
+    renderSegmentsOnWaveform(segments, currentIndex, editingIndex, onEdit) {
+        const container = document.getElementById('timeline');
+        const waveformContainer = document.getElementById('waveform-container');
+        container.innerHTML = '';
+
+        // Get audio duration to calculate positions
+        const audioDuration = this.app.audioManager.getDuration();
+        if (!audioDuration) return;
+
+        const containerWidth = waveformContainer.offsetWidth;
 
         segments.forEach((segment, index) => {
             const div = document.createElement('div');
@@ -241,22 +297,22 @@ export class UIController {
                 div.classList.add('editing');
             }
 
+            // Calculate position and width based on time
+            const startPercent = (segment.startTime / audioDuration) * 100;
+            const endPercent = (segment.endTime / audioDuration) * 100;
+            const widthPercent = endPercent - startPercent;
+
+            div.style.left = `${startPercent}%`;
+            div.style.width = `${widthPercent}%`;
+
             div.innerHTML = `
-                <div class="segment-header">
-                    <span class="segment-time">
-                        ${segment.startTime.toFixed(1)}s - ${segment.endTime.toFixed(1)}s
-                    </span>
-                    <button class="segment-delete" data-index="${index}">Delete</button>
+                <div class="segment-label">
+                    <div class="segment-time">${segment.startTime.toFixed(1)}s - ${segment.endTime.toFixed(1)}s</div>
                 </div>
-                <textarea readonly>${segment.code}</textarea>
             `;
 
-            div.querySelector('.segment-delete').addEventListener('click', (e) => {
+            div.addEventListener('click', (e) => {
                 e.stopPropagation();
-                onDelete(index);
-            });
-
-            div.addEventListener('click', () => {
                 onEdit(index);
             });
 
@@ -395,5 +451,25 @@ ${segment.code}`;
             end: parseFloat(document.getElementById('segment-end').value),
             code: document.getElementById('segment-code').value.trim()
         };
+    }
+
+    /**
+     * Update audio info display
+     * @param {string} filename - Audio filename
+     * @param {number} duration - Audio duration in seconds
+     */
+    updateAudioInfo(filename, duration) {
+        const audioInfo = document.getElementById('audio-info');
+        const audioFilename = document.getElementById('audio-filename');
+        const audioDuration = document.getElementById('audio-duration');
+        
+        if (audioInfo && audioFilename && audioDuration) {
+            audioInfo.style.display = 'block';
+            audioFilename.textContent = filename;
+            
+            const minutes = Math.floor(duration / 60);
+            const seconds = Math.floor(duration % 60);
+            audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
     }
 }

@@ -14,84 +14,128 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="hydra-container">
-        <canvas id="hydra-canvas"></canvas>
-    </div>
-
-    <div id="splitter"></div>
-
-    <div id="controls">
-        <!-- Project Section -->
-        <div class="control-section">
-            <h3>Project</h3>
-            <div class="project-buttons">
-                <button id="save-project" class="primary">Save Project</button>
-                <button id="load-project" class="primary">Load Project</button>
-                <input type="file" id="project-file" accept=".json">
+    <!-- Main Layout Container -->
+    <div id="app-container">
+        
+        <!-- Left Panel: Tabbed Interface -->
+        <div id="left-panel">
+            <!-- Tab Navigation -->
+            <div id="tab-nav">
+                <button class="tab-button active" data-tab="code">Code / Segments</button>
+                <button class="tab-button" data-tab="sources">Sources</button>
+                <button class="tab-button" data-tab="project">Save / Load</button>
+                <button class="tab-button" data-tab="audio">Audio</button>
             </div>
-            <div class="info">Save/load your work including audio, media, and segments</div>
-            <div class="hydra-info">
-                <strong>Hydra Config:</strong> 8 sources (s0-s7) | 4 outputs (o0-o3)
+
+            <!-- Tab Content Container -->
+            <div id="tab-content">
+                
+                <!-- Code/Segments Tab -->
+                <div id="code-tab" class="tab-panel active">
+                    <h3>Segment Editor <span id="edit-mode-indicator"></span></h3>
+                    
+                    <!-- Error Display Section -->
+                    <div id="error-section" style="display: none;">
+                        <div class="error-banner">⚠️ Hydra Execution Error</div>
+                        <div id="error-display"></div>
+                        <button id="clear-error">Clear Error</button>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Start (sec):</label>
+                        <input type="number" id="segment-start" value="0" min="0" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>End (sec):</label>
+                        <input type="number" id="segment-end" value="6" min="0" step="0.1">
+                    </div>
+                    <textarea id="segment-code" placeholder="Enter Hydra code... e.g., osc(10, 0.1, 1).out(o0)"></textarea>
+                    <div class="button-group">
+                        <button id="add-segment">Add Segment</button>
+                        <button id="cancel-edit" style="display: none;">Cancel Edit</button>
+                        <button id="sort-segments">Sort Segments</button>
+                    </div>
+                    <div class="info">Live coding mode: each segment builds on previous output (o0)</div>
+                    <div id="segments-list"></div>
+                </div>
+
+                <!-- Sources Tab -->
+                <div id="sources-tab" class="tab-panel">
+                    <h3>Media Sources (s0-s7)</h3>
+                    <label for="video-file" class="file-label">Add Video</label>
+                    <input type="file" id="video-file" accept="video/*" multiple>
+                    <label for="image-file" class="file-label">Add Image</label>
+                    <input type="file" id="image-file" accept="image/*" multiple>
+                    <div class="sources-grid" id="sources-list"></div>
+                    <div class="info">Use src(s0), src(s1), etc. in your Hydra code</div>
+                </div>
+
+                <!-- Project Tab -->
+                <div id="project-tab" class="tab-panel">
+                    <h3>Project</h3>
+                    <div class="project-buttons">
+                        <button id="save-project" class="primary">Save Project</button>
+                        <button id="load-project" class="primary">Load Project</button>
+                        <input type="file" id="project-file" accept=".json">
+                    </div>
+                    <div class="info">Save/load your work including audio, media, and segments</div>
+                    <div class="hydra-info">
+                        <strong>Hydra Config:</strong><br>
+                        8 sources (s0-s7)<br>
+                        4 outputs (o0-o3)
+                    </div>
+                </div>
+
+                <!-- Audio Tab -->
+                <div id="audio-tab" class="tab-panel">
+                    <h3>Audio</h3>
+                    <label for="audio-file" class="file-label">Load Audio File</label>
+                    <input type="file" id="audio-file" accept="audio/*">
+                    <div id="audio-info" style="display: none;">
+                        <div class="info-box">
+                            <strong>Loaded:</strong> <span id="audio-filename">-</span><br>
+                            <strong>Duration:</strong> <span id="audio-duration">-</span>
+                        </div>
+                    </div>
+                    <div class="info">Audio reactive: use a.fft[0-3] in your Hydra code</div>
+                </div>
+
             </div>
         </div>
 
-        <!-- Audio Section -->
-        <div class="control-section">
-            <h3>Audio</h3>
-            <label for="audio-file" class="file-label">Load Audio File</label>
-            <input type="file" id="audio-file" accept="audio/*">
+        <!-- Right Panel: Hydra Canvas -->
+        <div id="right-panel">
+            <div id="hydra-container">
+                <canvas id="hydra-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Bottom Panel: Timeline/Waveform -->
+        <div id="bottom-panel">
+            <div class="panel-header">
+                <h3>Timeline</h3>
+                <div id="playback-controls">
+                    <button id="play-pause">Play</button>
+                    <button id="stop">Stop</button>
+                    <span id="time-display">0:00 / 0:00</span>
+                </div>
+            </div>
+            
             <div id="waveform-container">
                 <canvas id="waveform"></canvas>
                 <div id="playhead"></div>
+                <div id="timeline"></div>
             </div>
+            
             <div class="waveform-controls">
                 <button id="zoom-in">Zoom In</button>
                 <button id="zoom-out">Zoom Out</button>
                 <button id="reset-view">Reset View</button>
                 <span id="zoom-level">Zoom: 1.0x | Amp: 1.0x</span>
             </div>
-            <div id="playback-controls">
-                <button id="play-pause">Play</button>
-                <button id="stop">Stop</button>
-                <span id="time-display">0:00 / 0:00</span>
-            </div>
-            <div class="info">Pinch to zoom, drag to pan | Audio reactive: use a.fft[0-3]</div>
+            <div class="info">Click to seek | Drag to pan | Pinch to zoom</div>
         </div>
 
-        <!-- Media Sources Section -->
-        <div class="control-section">
-            <h3>Media Sources (s0-s7)</h3>
-            <label for="video-file" class="file-label">Add Video</label>
-            <input type="file" id="video-file" accept="video/*" multiple>
-            <label for="image-file" class="file-label">Add Image</label>
-            <input type="file" id="image-file" accept="image/*" multiple>
-            <div class="sources-grid" id="sources-list"></div>
-            <div class="info">Use src(s0), src(s1), etc. in your Hydra code</div>
-        </div>
-
-        <!-- Error Display Section -->
-        <div class="control-section" id="error-section" style="display: none;">
-            <h3>⚠️ Hydra Execution Error</h3>
-            <div id="error-display"></div>
-            <button id="clear-error">Clear Error</button>
-        </div>
-
-        <!-- Timeline Section -->
-        <div class="control-section">
-            <h3>Timeline Segments <span id="edit-mode-indicator"></span></h3>
-            <div class="input-group">
-                <label>Start (sec):</label>
-                <input type="number" id="segment-start" value="0" min="0" step="0.1">
-                <label>End (sec):</label>
-                <input type="number" id="segment-end" value="6" min="0" step="0.1">
-            </div>
-            <textarea id="segment-code" placeholder="Enter Hydra code... e.g., osc(10, 0.1, 1).out(o0)"></textarea>
-            <button id="add-segment">Add Segment</button>
-            <button id="cancel-edit" style="display: none;">Cancel Edit</button>
-            <button id="sort-segments">Sort Segments</button>
-            <div class="info">Live coding mode: each segment builds on previous output (o0)</div>
-            <div id="timeline"></div>
-        </div>
     </div>
 
     <!-- Application Scripts -->
