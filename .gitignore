@@ -1,0 +1,46 @@
+# Backups
+app-legacy.js
+index-old.html
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project files (user generated)
+*.json
+!package.json
+
+# Media files
+*.mp3
+*.mp4
+*.wav
+*.mov
+*.avi
+*.webm
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies (if using npm)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+build/

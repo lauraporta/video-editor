@@ -1,0 +1,31 @@
+{
+  "name": "hydra-video-editor",
+  "version": "2.0.0",
+  "description": "Timeline-based video editor using Hydra synth for live coding visuals",
+  "type": "module",
+  "main": "js/app.js",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "hydra",
+    "video-editor",
+    "live-coding",
+    "visual-synth",
+    "audio-reactive"
+  ],
+  "author": "Hydra Video Editor",
+  "license": "MIT",
+  "dependencies": {
+    "hydra-synth": "^1.3.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
