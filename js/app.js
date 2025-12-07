@@ -308,7 +308,7 @@ class HydraVideoEditor {
             this.segmentManager.addSegment(inputs.start, inputs.end, inputs.code);
             
             // Auto-increment for next segment
-            this.uiController.clearSegmentInputs(inputs.end, inputs.end + 6);
+            this.uiController.clearSegmentInputs(inputs.end, inputs.end + UIController.DEFAULT_SEGMENT_DURATION);
         }
 
         this.sortSegments();
@@ -323,7 +323,7 @@ class HydraVideoEditor {
         
         const segments = this.segmentManager.getSegments();
         const defaultStart = segments.length > 0 ? segments[segments.length - 1].endTime : 0;
-        const defaultEnd = defaultStart + 6;
+        const defaultEnd = defaultStart + UIController.DEFAULT_SEGMENT_DURATION;
         this.uiController.clearSegmentInputs(defaultStart, defaultEnd);
         
         this.renderTimeline();
@@ -443,32 +443,88 @@ class HydraVideoEditor {
             }
             
             // Attempt to restore files from IndexedDB handles
-            if (project.storedHandles) {
-                // Try to restore audio
-                if (project.storedHandles.audio) {
+            let audioRestored = false;
+            if (project.storedHandles && project.storedHandles.audio) {
+                try {
+                    this.projectManager.audioFileHandle = project.storedHandles.audio;
+                    const audioFile = await this.projectManager.getAudioFile();
+                    await this.loadAudioFile(audioFile, this.projectManager.audioFileHandle);
+                    console.log('✓ Audio file restored');
+                    audioRestored = true;
+                } catch (error) {
+                    console.log('Could not restore audio file:', error.message);
+                }
+            }
+            
+            // Prompt user to select audio if not restored
+            if (!audioRestored) {
+                const audioFileName = project.audioName || 'unknown';
+                const action = await this.uiController.showFileRestoreModal({
+                    message: `Could not automatically restore audio file: ${audioFileName}\n\nClick the button below to select the audio file.`,
+                    showAudioButton: true,
+                    showMediaButton: false
+                });
+                
+                if (action === 'audio') {
                     try {
-                        this.projectManager.audioFileHandle = project.storedHandles.audio;
-                        const audioFile = await this.projectManager.getAudioFile();
-                        await this.loadAudioFile(audioFile, this.projectManager.audioFileHandle);
-                        console.log('✓ Audio file restored');
+                        const audioFile = await this.projectManager.requestAudioFileViaInput();
+                        await this.loadAudioFile(audioFile);
+                        console.log('✓ Audio file loaded manually');
+                        audioRestored = true;
                     } catch (error) {
-                        console.log('Could not restore audio file:', error.message);
-                        console.log(`Please reload audio file: ${project.audioName}`);
+                        console.log('Audio file selection cancelled or failed');
                     }
                 }
+            }
+            
+            // Try to restore media files
+            let mediaRestored = [];
+            if (project.storedHandles && project.storedHandles.media && project.storedHandles.media.length > 0) {
+                try {
+                    this.projectManager.mediaFileHandles = project.storedHandles.media;
+                    const mediaFiles = await this.projectManager.getMediaFiles();
+                    for (const mediaFile of mediaFiles) {
+                        const type = mediaFile.type.startsWith('video/') ? 'video' : 'image';
+                        this.addMediaSource(type, mediaFile);
+                        mediaRestored.push(mediaFile.name);
+                    }
+                    console.log(`✓ ${mediaFiles.length} media file(s) restored`);
+                } catch (error) {
+                    console.log('Could not restore some media files');
+                }
+            }
+            
+            // Prompt user to select media files if some are missing
+            const expectedMediaCount = project.mediaSources ? project.mediaSources.length : 0;
+            if (expectedMediaCount > mediaRestored.length) {
+                const missingCount = expectedMediaCount - mediaRestored.length;
+                const mediaList = project.mediaSources
+                    .slice(mediaRestored.length)
+                    .map(m => `  • ${m.file} (${m.type})`)
+                    .join('\n');
                 
-                // Try to restore media files
-                if (project.storedHandles.media && project.storedHandles.media.length > 0) {
+                const action = await this.uiController.showFileRestoreModal({
+                    message: `Missing ${missingCount} media file(s):\n\n${mediaList}\n\nClick the button below to select these files.`,
+                    showAudioButton: false,
+                    showMediaButton: true
+                });
+                
+                if (action === 'media') {
+                    // Determine media type from first missing file
+                    const firstMissing = project.mediaSources[mediaRestored.length];
+                    const mediaType = firstMissing.type || 'image';
+                    
                     try {
-                        this.projectManager.mediaFileHandles = project.storedHandles.media;
-                        const mediaFiles = await this.projectManager.getMediaFiles();
-                        for (const mediaFile of mediaFiles) {
-                            const type = mediaFile.type.startsWith('video/') ? 'video' : 'image';
-                            this.addMediaSource(type, mediaFile);
+                        const files = await this.projectManager.requestMediaFilesViaInput(mediaType);
+                        if (files && files.length > 0) {
+                            for (const file of files) {
+                                const type = file.type.startsWith('video/') ? 'video' : 'image';
+                                this.addMediaSource(type, file);
+                            }
+                            console.log(`✓ Loaded ${files.length} media file(s) manually`);
                         }
-                        console.log(`✓ ${mediaFiles.length} media file(s) restored`);
                     } catch (error) {
-                        console.log('Could not restore some media files');
+                        console.log('Media file selection cancelled or failed');
                     }
                 }
             }

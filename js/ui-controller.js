@@ -4,9 +4,38 @@
  */
 
 export class UIController {
+    // Constants
+    static TIME_SNAP_INTERVAL = 0.1; // seconds
+    static DEFAULT_SEGMENT_DURATION = 6; // seconds
+    static MIN_SEGMENT_DURATION = 0.1; // seconds
+
     constructor(app) {
         this.app = app;
         this.initEventListeners();
+    }
+
+    /**
+     * Get visible time range for rendering segments
+     * @param {number} audioDuration - Total audio duration
+     * @returns {Object} Object with visibleStart, visibleEnd, visibleDuration
+     */
+    getVisibleTimeRange(audioDuration) {
+        const zoom = this.app.waveformRenderer.zoom;
+        const offset = this.app.waveformRenderer.offset;
+        const visibleStart = offset * audioDuration;
+        const visibleDuration = audioDuration / zoom;
+        const visibleEnd = visibleStart + visibleDuration;
+        return { visibleStart, visibleEnd, visibleDuration };
+    }
+
+    /**
+     * Snap time to grid
+     * @param {number} time - Time to snap
+     * @returns {number} Snapped time
+     */
+    snapTimeToGrid(time) {
+        const snapFactor = 1 / UIController.TIME_SNAP_INTERVAL;
+        return Math.round(time * snapFactor) / snapFactor;
     }
 
     /**
@@ -386,12 +415,8 @@ export class UIController {
         const audioDuration = this.app.audioManager.getDuration();
         if (!audioDuration) return;
 
-        // Get zoom and offset from waveform renderer
-        const zoom = this.app.waveformRenderer.zoom;
-        const offset = this.app.waveformRenderer.offset;
-        const visibleStart = offset * audioDuration;
-        const visibleEnd = visibleStart + (audioDuration / zoom);
-        const visibleDuration = visibleEnd - visibleStart;
+        // Get visible time range
+        const { visibleStart, visibleEnd, visibleDuration } = this.getVisibleTimeRange(audioDuration);
 
         segments.forEach((segment, index) => {
             // Skip segments outside visible range
@@ -488,23 +513,18 @@ export class UIController {
             const currentSegment = this.app.segmentManager.getSegment(segmentIndex);
             if (!currentSegment) return;
             
-            // Account for zoom and offset
-            const zoom = this.app.waveformRenderer.zoom;
-            const offset = this.app.waveformRenderer.offset;
-            const visibleStart = offset * audioDuration;
-            const visibleDuration = audioDuration / zoom;
+            // Get visible time range
+            const { visibleStart, visibleDuration } = this.getVisibleTimeRange(audioDuration);
             
             const x = e.clientX - rect.left;
             const timeAtCursor = visibleStart + (x / rect.width) * visibleDuration;
-            
-            // Snap to 0.1 second grid
-            const snappedTime = Math.round(timeAtCursor * 10) / 10;
+            const snappedTime = this.snapTimeToGrid(timeAtCursor);
             
             if (edge === 'start') {
-                const newStart = Math.max(0, Math.min(snappedTime, currentSegment.endTime - 0.1));
+                const newStart = Math.max(0, Math.min(snappedTime, currentSegment.endTime - UIController.MIN_SEGMENT_DURATION));
                 this.app.segmentManager.updateSegment(segmentIndex, newStart, currentSegment.endTime, currentSegment.code);
             } else {
-                const newEnd = Math.max(currentSegment.startTime + 0.1, Math.min(snappedTime, audioDuration));
+                const newEnd = Math.max(currentSegment.startTime + UIController.MIN_SEGMENT_DURATION, Math.min(snappedTime, audioDuration));
                 this.app.segmentManager.updateSegment(segmentIndex, currentSegment.startTime, newEnd, currentSegment.code);
             }
             
@@ -567,19 +587,14 @@ export class UIController {
             const currentSegment = this.app.segmentManager.getSegment(segmentIndex);
             if (!currentSegment) return;
             
-            // Account for zoom and offset
-            const zoom = this.app.waveformRenderer.zoom;
-            const offset = this.app.waveformRenderer.offset;
-            const visibleStart = offset * audioDuration;
-            const visibleDuration = audioDuration / zoom;
+            // Get visible time range
+            const { visibleDuration } = this.getVisibleTimeRange(audioDuration);
             
             const deltaX = e.clientX - dragStartX;
             const deltaTime = (deltaX / rect.width) * visibleDuration;
             
             let newStart = segmentStartTime + deltaTime;
-            
-            // Snap to 0.1 second grid
-            newStart = Math.round(newStart * 10) / 10;
+            newStart = this.snapTimeToGrid(newStart);
             
             // Clamp to valid range
             newStart = Math.max(0, Math.min(newStart, audioDuration - segmentDuration));
@@ -720,7 +735,7 @@ ${segment.code}`;
      * @param {number} defaultStart - Default start time
      * @param {number} defaultEnd - Default end time
      */
-    clearSegmentInputs(defaultStart = 0, defaultEnd = 6) {
+    clearSegmentInputs(defaultStart = 0, defaultEnd = UIController.DEFAULT_SEGMENT_DURATION) {
         document.getElementById('segment-code').value = '';
         document.getElementById('segment-start').value = defaultStart;
         document.getElementById('segment-end').value = defaultEnd;
@@ -756,5 +771,54 @@ ${segment.code}`;
             const seconds = Math.floor(duration % 60);
             audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
+    }
+
+    /**
+     * Show file restore modal
+     * @param {Object} options - Modal options
+     * @returns {Promise} Promise that resolves with user action
+     */
+    showFileRestoreModal(options) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('file-restore-modal');
+            const message = document.getElementById('restore-message');
+            const audioBtn = document.getElementById('restore-audio-btn');
+            const mediaBtn = document.getElementById('restore-media-btn');
+            const skipBtn = document.getElementById('restore-skip-btn');
+
+            // Set message
+            message.textContent = options.message;
+
+            // Show/hide buttons based on options
+            audioBtn.style.display = options.showAudioButton ? 'block' : 'none';
+            mediaBtn.style.display = options.showMediaButton ? 'block' : 'none';
+
+            // Clear previous listeners
+            const newAudioBtn = audioBtn.cloneNode(true);
+            const newMediaBtn = mediaBtn.cloneNode(true);
+            const newSkipBtn = skipBtn.cloneNode(true);
+            audioBtn.parentNode.replaceChild(newAudioBtn, audioBtn);
+            mediaBtn.parentNode.replaceChild(newMediaBtn, mediaBtn);
+            skipBtn.parentNode.replaceChild(newSkipBtn, skipBtn);
+
+            // Add new listeners
+            newAudioBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                resolve('audio');
+            });
+
+            newMediaBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                resolve('media');
+            });
+
+            newSkipBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+                resolve('skip');
+            });
+
+            // Show modal
+            modal.style.display = 'flex';
+        });
     }
 }

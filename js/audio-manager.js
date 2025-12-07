@@ -49,10 +49,10 @@ export class AudioManager {
         const bufferLength = this.audioAnalyser.frequencyBinCount;
         this.audioDataArray = new Uint8Array(bufferLength);
         
-        if (this.audioSource) {
-            this.audioSource.disconnect();
+        // Only create media element source if it doesn't exist
+        if (!this.audioSource) {
+            this.audioSource = this.audioContext.createMediaElementSource(this.audio);
         }
-        this.audioSource = this.audioContext.createMediaElementSource(this.audio);
         
         this.audioSource.connect(this.audioAnalyser);
         this.audioAnalyser.connect(this.audioContext.destination);

@@ -4,12 +4,21 @@
  */
 
 export class WaveformRenderer {
+    // Constants
+    static MIN_ZOOM = 1.0;
+    static MAX_ZOOM = 20.0;
+    static ZOOM_FACTOR = 1.2;
+    static ZOOM_FACTOR_WHEEL = 1.03;
+    static MIN_AMPLITUDE = 0.1;
+    static MAX_AMPLITUDE = 5.0;
+    static AMPLITUDE_FACTOR = 1.05;
+
     constructor(audioManager) {
         this.audioManager = audioManager;
         this.canvas = document.getElementById('waveform');
         this.ctx = this.canvas.getContext('2d');
         
-        this.zoom = 1.0;
+        this.zoom = WaveformRenderer.MIN_ZOOM;
         this.offset = 0;
         this.amplitude = 1.0;
         this.isPanning = false;
@@ -30,6 +39,7 @@ export class WaveformRenderer {
 
         // Get audio data with zoom/pan
         const data = audioBuffer.getChannelData(0);
+        const { visibleStart, visibleDuration } = this.getVisibleTimeRange();
         const visibleLength = data.length / this.zoom;
         const startSample = Math.floor(this.offset * data.length);
         const endSample = Math.min(startSample + visibleLength, data.length);
@@ -78,9 +88,7 @@ export class WaveformRenderer {
         const duration = this.audioManager.getDuration();
         if (!duration) return;
 
-        const visibleStart = this.offset * duration;
-        const visibleEnd = visibleStart + (duration / this.zoom);
-        const visibleDuration = visibleEnd - visibleStart;
+        const { visibleStart, visibleEnd, visibleDuration } = this.getVisibleTimeRange();
 
         // Determine tick interval based on zoom level
         let tickInterval;
@@ -124,9 +132,7 @@ export class WaveformRenderer {
         const duration = this.audioManager.getDuration();
         if (!duration) return;
 
-        const visibleStart = this.offset * duration;
-        const visibleEnd = visibleStart + (duration / this.zoom);
-        const visibleDuration = visibleEnd - visibleStart;
+        const { visibleStart, visibleEnd, visibleDuration } = this.getVisibleTimeRange();
 
         segments.forEach(segment => {
             if (segment.endTime < visibleStart || segment.startTime > visibleEnd) return;
@@ -159,23 +165,23 @@ export class WaveformRenderer {
      * Zoom in
      */
     zoomIn() {
-        this.zoom = Math.min(this.zoom * 1.2, 20);
-        this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+        this.zoom = Math.min(this.zoom * WaveformRenderer.ZOOM_FACTOR, WaveformRenderer.MAX_ZOOM);
+        this.clampOffset();
     }
 
     /**
      * Zoom out
      */
     zoomOut() {
-        this.zoom = Math.max(this.zoom / 1.2, 1);
-        this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+        this.zoom = Math.max(this.zoom / WaveformRenderer.ZOOM_FACTOR, WaveformRenderer.MIN_ZOOM);
+        this.clampOffset();
     }
 
     /**
      * Reset view to default
      */
     resetView() {
-        this.zoom = 1.0;
+        this.zoom = WaveformRenderer.MIN_ZOOM;
         this.offset = 0;
         this.amplitude = 1.0;
     }
@@ -188,7 +194,7 @@ export class WaveformRenderer {
     pan(deltaX, containerWidth) {
         const panAmount = deltaX / containerWidth;
         this.offset -= panAmount / this.zoom;
-        this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+        this.clampOffset();
     }
 
     /**
@@ -198,23 +204,23 @@ export class WaveformRenderer {
     handleWheel(e) {
         if (e.shiftKey) {
             // Amplitude zoom with Shift
-            const ampDelta = e.deltaY > 0 ? 0.95 : 1.05;
-            this.amplitude = Math.max(0.1, Math.min(this.amplitude * ampDelta, 5));
+            const ampDelta = e.deltaY > 0 ? (1 / WaveformRenderer.AMPLITUDE_FACTOR) : WaveformRenderer.AMPLITUDE_FACTOR;
+            this.amplitude = Math.max(WaveformRenderer.MIN_AMPLITUDE, Math.min(this.amplitude * ampDelta, WaveformRenderer.MAX_AMPLITUDE));
         } else if (e.ctrlKey || e.metaKey) {
             // Time zoom with Ctrl/Cmd (slower for trackpad)
-            const zoomDelta = e.deltaY > 0 ? 0.97 : 1.03;
-            this.zoom = Math.max(1, Math.min(this.zoom * zoomDelta, 20));
-            this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+            const zoomDelta = e.deltaY > 0 ? (1 / WaveformRenderer.ZOOM_FACTOR_WHEEL) : WaveformRenderer.ZOOM_FACTOR_WHEEL;
+            this.zoom = Math.max(WaveformRenderer.MIN_ZOOM, Math.min(this.zoom * zoomDelta, WaveformRenderer.MAX_ZOOM));
+            this.clampOffset();
         } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
             // Vertical scroll = time zoom (slower for trackpad)
-            const zoomDelta = e.deltaY > 0 ? 0.97 : 1.03;
-            this.zoom = Math.max(1, Math.min(this.zoom * zoomDelta, 20));
-            this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+            const zoomDelta = e.deltaY > 0 ? (1 / WaveformRenderer.ZOOM_FACTOR_WHEEL) : WaveformRenderer.ZOOM_FACTOR_WHEEL;
+            this.zoom = Math.max(WaveformRenderer.MIN_ZOOM, Math.min(this.zoom * zoomDelta, WaveformRenderer.MAX_ZOOM));
+            this.clampOffset();
         } else {
             // Horizontal scroll = pan
             const panAmount = e.deltaX / (this.canvas.offsetWidth * 2);
             this.offset += panAmount / this.zoom;
-            this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
+            this.clampOffset();
         }
     }
 
@@ -224,5 +230,24 @@ export class WaveformRenderer {
      */
     getZoomDisplay() {
         return `Zoom: ${this.zoom.toFixed(1)}x | Amp: ${this.amplitude.toFixed(1)}x`;
+    }
+
+    /**
+     * Get visible time range based on current zoom and offset
+     * @returns {Object} Object with visibleStart, visibleEnd, visibleDuration
+     */
+    getVisibleTimeRange() {
+        const duration = this.audioManager.getDuration();
+        const visibleStart = this.offset * duration;
+        const visibleDuration = duration / this.zoom;
+        const visibleEnd = visibleStart + visibleDuration;
+        return { visibleStart, visibleEnd, visibleDuration };
+    }
+
+    /**
+     * Clamp offset to valid range based on current zoom
+     */
+    clampOffset() {
+        this.offset = Math.max(0, Math.min(this.offset, 1 - 1/this.zoom));
     }
 }

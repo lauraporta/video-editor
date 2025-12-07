@@ -58,23 +58,6 @@ export class ProjectManager {
     }
 
     /**
-     * Serialize a file handle for storage (uses IndexedDB serialization)
-     * @param {FileSystemFileHandle} handle - File handle
-     * @returns {Object} Serialized handle data
-     */
-    async serializeFileHandle(handle) {
-        if (!handle) return null;
-        // Store the handle directly - it's serializable in IndexedDB format
-        // But for JSON we can only store metadata
-        return {
-            name: handle.name,
-            kind: handle.kind,
-            // Store handle reference if browser supports it (won't survive JSON serialization)
-            _handle: handle
-        };
-    }
-    
-    /**
      * Store file handles in IndexedDB for persistence
      */
     async storeHandlesInIndexedDB() {
@@ -272,31 +255,7 @@ export class ProjectManager {
      * @returns {Promise<File>} Audio file
      */
     async getAudioFile() {
-        if (!this.audioFileHandle) {
-            throw new Error('No audio file handle available');
-        }
-
-        try {
-            // Request permission to read the file
-            const permission = await this.audioFileHandle.queryPermission({ mode: 'read' });
-            
-            if (permission === 'granted') {
-                const file = await this.audioFileHandle.getFile();
-                return file;
-            } else if (permission === 'prompt') {
-                // Request permission - this will show a prompt
-                const newPermission = await this.audioFileHandle.requestPermission({ mode: 'read' });
-                if (newPermission === 'granted') {
-                    const file = await this.audioFileHandle.getFile();
-                    return file;
-                }
-            }
-            
-            throw new Error('Permission denied');
-        } catch (error) {
-            console.error('Error accessing stored audio file:', error);
-            throw error;
-        }
+        return await this.requestFileFromHandle(this.audioFileHandle);
     }
 
     /**
@@ -311,17 +270,8 @@ export class ProjectManager {
         const files = [];
         for (const handle of this.mediaFileHandles) {
             try {
-                // Request permission for each file
-                const permission = await handle.queryPermission({ mode: 'read' });
-                
-                if (permission === 'granted') {
-                    files.push(await handle.getFile());
-                } else if (permission === 'prompt') {
-                    const newPermission = await handle.requestPermission({ mode: 'read' });
-                    if (newPermission === 'granted') {
-                        files.push(await handle.getFile());
-                    }
-                }
+                const file = await this.requestFileFromHandle(handle);
+                files.push(file);
             } catch (error) {
                 console.warn('Could not access media file:', handle.name, error);
             }
@@ -367,5 +317,92 @@ export class ProjectManager {
      */
     clearMediaFileHandles() {
         this.mediaFileHandles = [];
+    }
+
+    /**
+     * Request audio file via file input (for contexts without user gesture)
+     * @returns {Promise<File>} Audio file
+     */
+    async requestAudioFileViaInput() {
+        return new Promise((resolve, reject) => {
+            const input = document.getElementById('audio-file');
+            if (!input) {
+                reject(new Error('Audio file input not found'));
+                return;
+            }
+
+            const handler = (e) => {
+                input.removeEventListener('change', handler);
+                const file = e.target.files[0];
+                if (file) {
+                    resolve(file);
+                } else {
+                    reject(new Error('No file selected'));
+                }
+            };
+
+            input.addEventListener('change', handler);
+            input.click();
+        });
+    }
+
+    /**
+     * Request media files via file input (for contexts without user gesture)
+     * @param {string} type - 'video', 'image', or 'all'
+     * @returns {Promise<Array<File>>} Media files
+     */
+    async requestMediaFilesViaInput(type = 'all') {
+        return new Promise((resolve, reject) => {
+            const inputId = type === 'video' ? 'video-file' : 'image-file';
+            const input = document.getElementById(inputId);
+            if (!input) {
+                reject(new Error(`${type} file input not found`));
+                return;
+            }
+
+            const handler = (e) => {
+                input.removeEventListener('change', handler);
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    resolve(files);
+                } else {
+                    reject(new Error('No files selected'));
+                }
+            };
+
+            input.addEventListener('change', handler);
+            input.click();
+        });
+    }
+
+    /**
+     * Request permission and get file from handle
+     * @param {FileSystemFileHandle} handle - File handle
+     * @returns {Promise<File>} File
+     */
+    async requestFileFromHandle(handle) {
+        if (!handle) {
+            throw new Error('No file handle available');
+        }
+
+        try {
+            // Request permission to read the file
+            const permission = await handle.queryPermission({ mode: 'read' });
+            
+            if (permission === 'granted') {
+                return await handle.getFile();
+            } else if (permission === 'prompt') {
+                // Request permission - this will show a prompt
+                const newPermission = await handle.requestPermission({ mode: 'read' });
+                if (newPermission === 'granted') {
+                    return await handle.getFile();
+                }
+            }
+            
+            throw new Error('Permission denied');
+        } catch (error) {
+            console.error('Error accessing stored file:', error);
+            throw error;
+        }
     }
 }
