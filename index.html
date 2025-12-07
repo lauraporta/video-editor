@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra Video Editor</title>
+    <script src="https://unpkg.com/hydra-synth"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #hydra-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #hydra-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            background: #1a1a1a;
+            padding: 20px;
+            border-top: 2px solid #333;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #222;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+
+        .control-section h3 {
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button {
+            background: #555;
+            color: #fff;
+            border: 1px solid #777;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #666;
+            border-color: #888;
+        }
+
+        button:disabled {
+            background: #333;
+            border-color: #444;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        button.primary {
+            background: #666;
+            border-color: #999;
+        }
+
+        button.primary:hover {
+            background: #777;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        label.file-label {
+            background: #444;
+            color: #fff;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 14px;
+            border: 1px solid #666;
+        }
+
+        label.file-label:hover {
+            background: #555;
+            border-color: #777;
+        }
+
+        #waveform-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #0a0a0a;
+            margin: 10px 0;
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid #333;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #waveform-container:active {
+            cursor: grabbing;
+        }
+
+        #waveform {
+            width: 100%;
+            height: 100%;
+        }
+
+        #playhead {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: #fff;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .waveform-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .waveform-controls button {
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        #timeline {
+            margin-top: 15px;
+        }
+
+        .segment {
+            background: #2a2a2a;
+            border: 2px solid #555;
+            border-radius: 3px;
+            padding: 10px;
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .segment.active {
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .segment.editing {
+            border-color: #aaa;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            background: #333;
+        }
+
+        .segment:hover {
+            cursor: pointer;
+            opacity: 0.9;
+        }
+
+        .segment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .segment-time {
+            font-size: 12px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .segment-delete {
+            background: #f44336;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-color: #d32f2f;
+        }
+
+        .segment-delete:hover {
+            background: #da190b;
+            border-color: #b71c1c;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 80px;
+            background: #0a0a0a;
+            color: #f0f0f0;
+            border: 1px solid #444;
+            border-radius: 3px;
+            padding: 8px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #888;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            min-width: 80px;
+            font-size: 13px;
+        }
+
+        .input-group input[type="number"],
+        .input-group input[type="text"] {
+            flex: 1;
+            background: #0a0a0a;
+            color: #f0f0f0;
+            border: 1px solid #444;
+            border-radius: 3px;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #888;
+        }
+
+        #playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #time-display {
+            font-size: 14px;
+            color: #fff;
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .source-item {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 3px;
+            border: 1px solid #444;
+            font-size: 12px;
+            word-break: break-all;
+            position: relative;
+        }
+
+        .source-item.video,
+        .source-item.image {
+            border-color: #666;
+        }
+
+        .source-preview {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 3px;
+            margin-bottom: 8px;
+            background: #000;
+            display: block;
+        }
+
+        .source-label {
+            display: block;
+            margin-top: 5px;
+            color: #aaa;
+            font-weight: bold;
+        }
+
+        #splitter {
+            height: 5px;
+            background: #333;
+            cursor: ns-resize;
+            position: relative;
+        }
+
+        #splitter:hover {
+            background: #666;
+        }
+
+        #error-section {
+            background: #4a0000;
+            border: 2px solid #ff0000;
+        }
+
+        #error-section h3 {
+            color: #ff4444;
+        }
+
+        #error-display {
+            background: #1a0000;
+            color: #ff6666;
+            padding: 15px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #clear-error {
+            background: #666;
+        }
+
+        #clear-error:hover {
+            background: #888;
+        }
+
+        #edit-mode-indicator {
+            color: #ccc;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #cancel-edit {
+            background: #444;
+            border-color: #555;
+        }
+
+        #cancel-edit:hover {
+            background: #555;
+        }
+
+        .project-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .hydra-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+            padding: 8px;
+            background: #0a0a0a;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="hydra-container">
+        <canvas id="hydra-canvas"></canvas>
+    </div>
+
+    <div id="splitter"></div>
+
+    <div id="controls">
+        <!-- Project Section -->
+        <div class="control-section">
+            <h3>Project</h3>
+            <div class="project-buttons">
+                <button id="save-project" class="primary">Save Project</button>
+                <button id="load-project" class="primary">Load Project</button>
+                <input type="file" id="project-file" accept=".json">
+            </div>
+            <div class="info">Save/load your work including audio, media, and segments</div>
+            <div class="hydra-info">
+                <strong>Hydra Config:</strong> 8 sources (s0-s7) | 4 outputs (o0-o3)
+            </div>
+        </div>
+
+        <!-- Audio Section -->
+        <div class="control-section">
+            <h3>Audio</h3>
+            <label for="audio-file" class="file-label">Load Audio File</label>
+            <input type="file" id="audio-file" accept="audio/*">
+            <div id="waveform-container">
+                <canvas id="waveform"></canvas>
+                <div id="playhead"></div>
+            </div>
+            <div class="waveform-controls">
+                <button id="zoom-in">Zoom In</button>
+                <button id="zoom-out">Zoom Out</button>
+                <button id="reset-view">Reset View</button>
+                <span id="zoom-level">Zoom: 1.0x | Amp: 1.0x</span>
+            </div>
+            <div id="playback-controls">
+                <button id="play-pause">Play</button>
+                <button id="stop">Stop</button>
+                <span id="time-display">0:00 / 0:00</span>
+            </div>
+            <div class="info">Pinch to zoom, drag to pan | Audio reactive: use a.fft[0-3]</div>
+        </div>
+
+        <!-- Media Sources Section -->
+        <div class="control-section">
+            <h3>Media Sources (s0-s7)</h3>
+            <label for="video-file" class="file-label">Add Video</label>
+            <input type="file" id="video-file" accept="video/*" multiple>
+            <label for="image-file" class="file-label">Add Image</label>
+            <input type="file" id="image-file" accept="image/*" multiple>
+            <div class="sources-grid" id="sources-list"></div>
+            <div class="info">Use src(s0), src(s1), etc. in your Hydra code</div>
+        </div>
+
+        <!-- Error Display Section -->
+        <div class="control-section" id="error-section" style="display: none;">
+            <h3>⚠️ Hydra Execution Error</h3>
+            <div id="error-display"></div>
+            <button id="clear-error">Clear Error</button>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="control-section">
+            <h3>Timeline Segments <span id="edit-mode-indicator"></span></h3>
+            <div class="input-group">
+                <label>Start (sec):</label>
+                <input type="number" id="segment-start" value="0" min="0" step="0.1">
+                <label>End (sec):</label>
+                <input type="number" id="segment-end" value="6" min="0" step="0.1">
+            </div>
+            <textarea id="segment-code" placeholder="Enter Hydra code... e.g., osc(10, 0.1, 1).out(o0)"></textarea>
+            <button id="add-segment">Add Segment</button>
+            <button id="cancel-edit" style="display: none;">Cancel Edit</button>
+            <button id="sort-segments">Sort Segments</button>
+            <div class="info">Live coding mode: each segment builds on previous output (o0)</div>
+            <div id="timeline"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
