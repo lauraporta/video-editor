@@ -18,17 +18,6 @@ desktop.ini
 *.json
 !package.json
 
-# Media files
-*.mp3
-*.mp4
-*.wav
-*.mov
-*.avi
-*.webm
-*.jpg
-*.jpeg
-*.png
-*.gif
 
 # Logs
 *.log
