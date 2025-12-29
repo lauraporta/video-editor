@@ -121,6 +121,8 @@ class HydraVideoEditor {
         }
 
         try {
+            // Play all video sources
+            this.mediaManager.playVideos();
             await this.audioManager.play();
             this.uiController.updatePlayPauseButton(true);
         } catch (error) {
@@ -133,6 +135,7 @@ class HydraVideoEditor {
      */
     pause() {
         this.audioManager.pause();
+        this.mediaManager.pauseVideos();
         this.uiController.updatePlayPauseButton(false);
     }
 
@@ -141,6 +144,8 @@ class HydraVideoEditor {
      */
     stop() {
         this.audioManager.stop();
+        this.mediaManager.pauseVideos();
+        this.mediaManager.seekVideos(0);
         this.segmentManager.resetCurrentSegment();
         this.uiController.updatePlayPauseButton(false);
         this.updatePlayhead();

@@ -115,6 +115,18 @@ export class SegmentManager {
         const segment = this.segments[index];
         console.log(`Executing segment ${index}: ${segment.startTime}s - ${segment.endTime}s`);
         
+        // Debug: Check video element states before executing
+        console.log('  Video sources state:');
+        for (let i = 0; i < 8; i++) {
+            const sourceKey = `s${i}`;
+            if (window[sourceKey] && window[sourceKey].src) {
+                const videoEl = window[sourceKey].src;
+                if (videoEl && videoEl.tagName === 'VIDEO') {
+                    console.log(`    ${sourceKey}: paused=${videoEl.paused}, currentTime=${videoEl.currentTime.toFixed(2)}s, readyState=${videoEl.readyState}`);
+                }
+            }
+        }
+        
         this.hydraManager.executeCode(segment.code);
         console.log('✓ Segment executed - previous outputs preserved for live coding');
     }
