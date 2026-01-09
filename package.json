@@ -1,6 +1,6 @@
 {
   "name": "hydra-video-editor",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "description": "Timeline-based video editor using Hydra synth for live coding visuals",
   "type": "module",
   "main": "js/app.js",
