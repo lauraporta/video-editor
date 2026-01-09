@@ -1016,3 +1016,26 @@ textarea:focus {
         width: 100%;
     }
 }
+
+/* ==================== Version Footer ==================== */
+#version-footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.7);
+    border-top-left-radius: 4px;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+#version-text {
+    font-size: 11px;
+    color: #888;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+#version-number {
+    color: #aaa;
+    font-weight: bold;
+}
